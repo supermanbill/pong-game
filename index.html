@@ -124,16 +124,16 @@ let shake = 0;
 let particles = [], wallFlash = 0;
 
 // 分數
-let playerScore = 0;   // 玩家回合得分（先到7獲勝）
-let aiScore = 0;        // AI 回合得分（先到7獲勝）
-let youHitScore = 0;    // 玩家回擊分數（持續累積）
-let roundWinner = null;  // 'ai' or 'you'
+let playerScore = 0;
+let aiScore = 0;
+let youHitScore = 0;
+let roundWinner = null;
 let totalScore = 0;
 let isNewHighScore = false;
 
 const ai = { x: 20, y: H/2 - PH/2 };
 const you = { x: W - 20 - PW, y: H/2 - PH/2 };
-const ball = { x: W/2, y: H/2, vx: BSINIT, vy: BSINIT, spd: BSINIT };
+const ball = { x: W/2, y: H/2, vx: BSINIT, vy: 0, spd: BSINIT };
 
 // ===== 輸入 =====
 const keys = {};
@@ -173,12 +173,12 @@ canvas.addEventListener('touchstart', e => {
 canvas.addEventListener('touchend', e => { e.preventDefault(); touchUp = false; touchDown = false; }, { passive: false });
 
 // ===== 遊戲邏輯 =====
-function resetBall(dir = 1) {
-  ball.x = W/2;
-  ball.y = H/2 + (Math.random() - 0.5) * 200; // 隨機起始位置
+function resetBall(dir) {
+  ball.x = W / 2;
+  ball.y = H / 2 + (Math.random() - 0.5) * 200;
   ball.spd = BSINIT;
-  ball.vx = BSINIT * dir;
-  ball.vy = (Math.random() - 0.5) * BSINIT * 0.3; // 小的隨機垂直角度
+  ball.vx = ball.spd * dir;
+  ball.vy = (Math.random() - 0.5) * ball.spd * 0.4;
 }
 
 function doReplay() {
@@ -215,90 +215,100 @@ function update(dt) {
     flashTimer -= dt;
     if (flashTimer <= 0) state = 'playing';
   } else if (state === 'playing') {
+    
+    // ===== 移動 =====
+    
     // AI 移動
+    let targetY = ball.y;
     if (ball.vx < 0) {
-      const t = (ai.x + PW/2 - ball.x) / ball.vx;
-      let py = ball.y + ball.vy * t * AI_PRED;
-      py = Math.max(PH/2, Math.min(H - PH/2, py));
-      const diff = py - (ai.y + PH/2);
-      ai.y += Math.sign(diff) * Math.min(Math.abs(diff), AI_SPEED);
-    } else {
-      const diff = H/2 - (ai.y + PH/2);
-      ai.y += Math.sign(diff) * Math.min(Math.abs(diff), AI_SPEED * 0.5);
+      targetY = ball.y + ball.vy * AI_PRED * 3;
     }
-    ai.y = Math.max(0, Math.min(H - PH, ai.y));
+    targetY = Math.max(0, Math.min(H - PH, targetY));
+    const aiDiff = targetY - (ai.y + PH/2);
+    ai.y += Math.sign(aiDiff) * Math.min(Math.abs(aiDiff), AI_SPEED);
 
     // 玩家移動
     if (keys['ArrowUp'] || touchUp) you.y -= PSPEED;
     if (keys['ArrowDown'] || touchDown) you.y += PSPEED;
     you.y = Math.max(0, Math.min(H - PH, you.y));
 
-    // 球移動
+    // ===== 球移動 =====
     ball.x += ball.vx;
     ball.y += ball.vy;
 
-    // 牆壁碰撞（上下）
-    if (ball.y - BSIZE/2 < 0) {
+    // 上下牆壁
+    if (ball.y <= BSIZE/2) {
       ball.y = BSIZE/2;
       ball.vy = Math.abs(ball.vy);
       wallFlash = 1;
     }
-    if (ball.y + BSIZE/2 > H) {
+    if (ball.y >= H - BSIZE/2) {
       ball.y = H - BSIZE/2;
       ball.vy = -Math.abs(ball.vy);
       wallFlash = 1;
     }
     wallFlash = Math.max(0, wallFlash - dt * 4);
 
-    // 擋板碰撞
-    const br = { l: ball.x - BSIZE/2, r: ball.x + BSIZE/2, t: ball.y - BSIZE/2, b: ball.y + BSIZE/2 };
-    const paddleRect = p => ({ l: p.x, r: p.x + PW, t: p.y, b: p.y + PH });
-    const overlap = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+    // ===== 碰撞檢測 =====
+    const ballLeft = ball.x - BSIZE/2;
+    const ballRight = ball.x + BSIZE/2;
+    const ballTop = ball.y - BSIZE/2;
+    const ballBottom = ball.y + BSIZE/2;
 
-    // AI 擋板碰撞
-    if (overlap(br, paddleRect(ai)) && ball.vx < 0) {
-      ball.x = ai.x + PW + BSIZE/2;
-      const rel = (ball.y - (ai.y + PH/2)) / (PH/2);
-      ball.spd = Math.min(ball.spd + BACC, BSMAX);
-      ball.vx = ball.spd;
-      ball.vy = ball.spd * Math.max(-1, Math.min(1, rel));
-      shake = 6;
-      playHit(ball.spd);
-      for (let i = 0; i < 14; i++) particles.push(new Particle(ball.x, ball.y, -1));
+    // AI 擋板 (左側)
+    const aiRight = ai.x + PW;
+    const aiLeft = ai.x;
+    const aiTop = ai.y;
+    const aiBottom = ai.y + PH;
+    
+    if (ballLeft < aiRight && ballRight > aiLeft && ballTop < aiBottom && ballBottom > aiTop) {
+      if (ball.vx < 0) {
+        ball.x = aiRight + BSIZE/2;
+        const rel = (ball.y - (ai.y + PH/2)) / (PH/2);
+        ball.spd = Math.min(ball.spd + BACC, BSMAX);
+        ball.vx = ball.spd;
+        ball.vy = ball.spd * Math.max(-0.8, Math.min(0.8, rel));
+        shake = 6;
+        playHit(ball.spd);
+        for (let i = 0; i < 10; i++) particles.push(new Particle(ball.x, ball.y, -1));
+      }
     }
 
-    // 玩家擋板碰撞
-    if (overlap(br, paddleRect(you)) && ball.vx > 0) {
-      ball.x = you.x - BSIZE/2;
-      const rel = (ball.y - (you.y + PH/2)) / (PH/2);
-      ball.spd = Math.min(ball.spd + BACC, BSMAX);
-      ball.vx = -ball.spd;
-      ball.vy = ball.spd * Math.max(-1, Math.min(1, rel));
-      youHitScore++; // 玩家回擊成功 +1
-      shake = 6;
-      playHit(ball.spd);
-      for (let i = 0; i < 14; i++) particles.push(new Particle(ball.x, ball.y, 1));
+    // 玩家擋板 (右側)
+    const youLeft = you.x;
+    const youRight = you.x + PW;
+    const youTop = you.y;
+    const youBottom = you.y + PH;
+    
+    if (ballRight > youLeft && ballLeft < youRight && ballTop < youBottom && ballBottom > youTop) {
+      if (ball.vx > 0) {
+        ball.x = youLeft - BSIZE/2;
+        const rel = (ball.y - (you.y + PH/2)) / (PH/2);
+        ball.spd = Math.min(ball.spd + BACC, BSMAX);
+        ball.vx = -ball.spd;
+        ball.vy = ball.spd * Math.max(-0.8, Math.min(0.8, rel));
+        youHitScore++;
+        shake = 6;
+        playHit(ball.spd);
+        for (let i = 0; i < 10; i++) particles.push(new Particle(ball.x, ball.y, 1));
+      }
     }
 
-    // 得分（球出界）
-    // 球向左出界 (ball.x < 0) = AI 沒接到 = 玩家得分
-    // 球向右出界 (ball.x > W) = 玩家沒接到 = AI 得分
-    if (ball.x < 0) {
+    // ===== 得分 =====
+    if (ball.x < -BSIZE) {
+      // 球向左出界 = AI沒接到 = 玩家得分
       playerScore++;
       particles = [];
-      resetBall(-1); // 下一球從 AI 方向發出
+      resetBall(-1);
     }
-    if (ball.x > W) {
+    if (ball.x > W + BSIZE) {
+      // 球向右出界 = 玩家沒接到 = AI得分
       aiScore++;
       particles = [];
-      resetBall(1); // 下一球從玩家方向發出
+      resetBall(1);
     }
 
-    // 確保球在場內
-    ball.x = Math.max(BSIZE/2, Math.min(W - BSIZE/2, ball.x));
-    ball.y = Math.max(BSIZE/2, Math.min(H - BSIZE/2, ball.y));
-
-    // 遊戲結束
+    // ===== 遊戲結束 =====
     if (playerScore >= WIN_SCORE) {
       roundWinner = 'you';
       totalScore = youHitScore * 5;
