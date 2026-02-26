@@ -275,8 +275,8 @@ function update(dt) {
       wallFlash = 1;
     }
     if (ball.y >= H - BSIZE/2) {
-      ball.y = H2;
-      ball - BSIZE/.vy = -Math.abs(ball.vy);
+      ball.y = H - BSIZE/2;
+      ball.vy = -Math.abs(ball.vy);
       wallFlash = 1;
     }
     wallFlash = Math.max(0, wallFlash - dt * 4);
