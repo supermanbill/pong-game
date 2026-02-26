@@ -117,42 +117,49 @@ window.addEventListener('resize', resize);
 resize();
 
 // ===== 音效 =====
-let audioCtx;
+let audioCtx = null;
 let audioMuted = false;
 
 function initAudio() {
   if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.log('Audio not supported');
+    }
   }
-  if (audioCtx.state === 'suspended') {
+  if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
 }
 
-function tone(freq, dur, vol = 0.4) {
-  if (audioMuted) return;
+function playTone(freq, dur, vol = 0.5, type = 'sine') {
+  if (audioMuted || !audioCtx) return;
   try {
-    initAudio();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.frequency.value = freq;
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
     gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-    osc.start(); osc.stop(audioCtx.currentTime + dur);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
   } catch(e) {}
 }
+
+const playTick = () => playTone(440, 0.1, 0.3, 'square');
+const playGo = () => { playTone(523, 0.08, 0.5); setTimeout(() => playTone(659, 0.08, 0.5), 80); setTimeout(() => playTone(784, 0.15, 0.5), 160); };
+const playHit = (s) => playTone(300 + s * 20, 0.08, 0.4);
+const playWin = () => { [523,659,784,1047].forEach((f,i) => setTimeout(() => playTone(f, 0.2, 0.5), i*120)); };
+const playLose = () => { [400,350,300,250].forEach((f,i) => setTimeout(() => playTone(f, 0.25, 0.4), i*150)); };
 
 function toggleMute() {
   audioMuted = !audioMuted;
   document.getElementById('mute-btn').textContent = audioMuted ? '🔇' : '🔊';
   if (!audioMuted) initAudio();
 }
-const playTick = () => tone(350, 0.09, 0.3);
-const playGo = () => { tone(523, 0.06, 0.5); setTimeout(() => tone(659, 0.06, 0.5), 60); setTimeout(() => tone(784, 0.22, 0.5), 120); };
-const playHit = (s) => tone(400 + s * 30, 0.07, 0.2 + s * 0.05);
-const playWin = () => [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f, i===3?0.5:0.1, 0.55), i*100));
-const playLose = () => [440,392,349,262].forEach((f,i) => setTimeout(() => tone(f, i===3?0.6:0.14, 0.4), i*140));
 
 // ===== 粒子 =====
 class Particle {
