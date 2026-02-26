@@ -233,7 +233,7 @@ const VERSION = '1.0';
 // ==================== 常量 ====================
 const W = 800, H = 600, H_CANVAS = 710;
 const PW = 12, PH = 90, PSPEED = 6;
-const AI_SPEED = 4.2, AI_PRED = 0.55;
+const AI_SPEED = 3.5, AI_PRED = 0.3;
 const BSIZE = 12, BSINIT = 3.5, BSMAX = 8, BACC = 0.2;
 const WIN_SCORE = 7, SHAKE_F = 6;
 const DPAD_W = 150, DPAD_H = 76;
@@ -522,12 +522,10 @@ function update(dt) {
     // 得分
     if (ball.x < 0) {
       you.score++;
-      currentRoundScore = 0;  // 重設回合得分
       particles=[]; resetBall( 1);
     }
     if (ball.x > W) {
       ai.score++;
-      currentRoundScore = 0;  // 重設回合得分
       particles=[]; resetBall(-1);
     }
 
