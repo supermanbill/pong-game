@@ -29,9 +29,15 @@
     .verify-buttons button { width: 120px; margin: 0; }
     .verify-buttons .yes-btn { background: linear-gradient(135deg, #32dcdc, #28a8a8); }
     .verify-buttons .no-btn { background: linear-gradient(135deg, #ff5050, #cc4040); }
+    
+    /* 靜音按鈕 */
+    #mute-btn { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; padding: 8px 12px; color: #888; cursor: pointer; font-size: 20px; z-index: 50; }
+    #mute-btn:hover { background: rgba(255,255,255,0.2); }
   </style>
 </head>
 <body>
+
+<button id="mute-btn" onclick="toggleMute()">🔊</button>
 
 <div id="register-screen">
   <!-- 註冊畫面 -->
@@ -112,9 +118,21 @@ resize();
 
 // ===== 音效 =====
 let audioCtx;
+let audioMuted = false;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
 function tone(freq, dur, vol = 0.4) {
+  if (audioMuted) return;
   try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    initAudio();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
@@ -123,6 +141,12 @@ function tone(freq, dur, vol = 0.4) {
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
     osc.start(); osc.stop(audioCtx.currentTime + dur);
   } catch(e) {}
+}
+
+function toggleMute() {
+  audioMuted = !audioMuted;
+  document.getElementById('mute-btn').textContent = audioMuted ? '🔇' : '🔊';
+  if (!audioMuted) initAudio();
 }
 const playTick = () => tone(350, 0.09, 0.3);
 const playGo = () => { tone(523, 0.06, 0.5); setTimeout(() => tone(659, 0.06, 0.5), 60); setTimeout(() => tone(784, 0.22, 0.5), 120); };
@@ -557,6 +581,8 @@ function startGame(name) {
   playerName = name;
   savePlayerName(name); // 儲存名字
   highScore = getPlayerScore(name);
+  
+  initAudio(); // 初始化音效
   
   document.getElementById('register-screen').classList.add('hidden');
   playTick();
