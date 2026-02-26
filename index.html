@@ -18,7 +18,6 @@
     }
     canvas { display: block; }
     
-    /* 註冊畫面 */
     #register-screen {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -69,46 +68,10 @@
     }
     .register-box button:hover { transform: scale(1.05); }
     .register-box .error { color: #ff5050; margin-top: 15px; font-size: 14px; }
-    
-    /* 排行榜 */
-    #leaderboard-screen {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.9);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 90;
-    }
-    #leaderboard-screen.show { display: flex; }
-    
-    .leaderboard-box {
-      background: rgba(20,20,20,0.95);
-      border: 2px solid #ffe632;
-      border-radius: 16px;
-      padding: 30px 40px;
-      max-width: 450px;
-      width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    
-    .leaderboard-box h2 { color: #ffe632; font-size: 28px; text-align: center; margin-bottom: 20px; }
-    .leaderboard-box .my-rank { background: rgba(50,220,220,0.15); border: 2px solid #32dcdc; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; }
-    .leaderboard-box .my-rank .rank-num { color: #32dcdc; font-size: 24px; font-weight: bold; }
-    .leaderboard-box .my-rank .rank-score { color: #ffe632; font-size: 18px; }
-    .leaderboard-box table { width: 100%; border-collapse: collapse; }
-    .leaderboard-box th { color: #888; font-size: 12px; text-align: left; padding: 10px 5px; border-bottom: 1px solid #333; }
-    .leaderboard-box td { color: #fff; padding: 12px 5px; border-bottom: 1px solid #222; }
-    .leaderboard-box tr:nth-child(1) td { color: #ffd700; font-weight: bold; }
-    .leaderboard-box tr:nth-child(2) td { color: #c0c0c0; }
-    .leaderboard-box tr:nth-child(3) td { color: #cd7f32; }
-    .leaderboard-box .close-btn { display: block; margin: 25px auto 0; padding: 12px 40px; font-size: 16px; color: #fff; background: #333; border: 1px solid #555; border-radius: 8px; cursor: pointer; }
   </style>
 </head>
 <body>
 
-<!-- 註冊畫面 -->
 <div id="register-screen">
   <div class="register-box">
     <h1>🏓 PONG</h1>
@@ -116,22 +79,6 @@
     <input type="text" id="player-name" placeholder="你的名字" maxlength="15" autocomplete="off">
     <button id="start-btn">開始遊戲</button>
     <p class="error" id="name-error"></p>
-  </div>
-</div>
-
-<!-- 排行榜畫面 -->
-<div id="leaderboard-screen">
-  <div class="leaderboard-box">
-    <h2>🏆 排行榜</h2>
-    <div class="my-rank">
-      <div>你的排名：<span class="rank-num" id="rank-num">-</span></div>
-      <div>本局得分：<span class="rank-score" id="rank-score">-</span></div>
-    </div>
-    <table>
-      <thead><tr><th style="width:50px">排名</th><th>玩家</th><th style="text-align:right">總分</th></tr></thead>
-      <tbody id="leaderboard-body"></tbody>
-    </table>
-    <button class="close-btn" id="close-leaderboard">關閉</button>
   </div>
 </div>
 
@@ -150,7 +97,8 @@ const DPAD_RX = W/2 + DPAD_GAP/2;
 const DPAD_Y = H + 17;
 
 // ===== 玩家資料 =====
-let playerName = '', playerTotalScore = 0, currentRoundScore = 0;
+let playerName = '';
+let highScore = 0;
 
 // ===== 排行榜 =====
 function getLeaderboard() { return JSON.parse(localStorage.getItem('pong-leaderboard') || '[]'); }
@@ -158,11 +106,13 @@ function saveLeaderboard(board) { localStorage.setItem('pong-leaderboard', JSON.
 function updateLeaderboard(name, score) {
   let board = getLeaderboard();
   const p = board.find(x => x.name === name);
-  if (p) p.score += score; else board.push({ name, score });
+  if (p) { if (score > p.score) p.score = score; }
+  else { board.push({ name, score }); }
   board.sort((a, b) => b.score - a.score);
   saveLeaderboard(board.slice(0, 10));
 }
 function getPlayerRank(name) { const idx = getLeaderboard().findIndex(p => p.name === name); return idx >= 0 ? idx + 1 : null; }
+function isNameTaken(name) { return getLeaderboard().some(p => p.name.toLowerCase() === name.toLowerCase()); }
 
 // ===== Canvas =====
 const canvas = document.getElementById('c');
@@ -210,11 +160,7 @@ class Particle {
     this.col = [255,255,200];
     this.size = 2 + Math.floor(Math.random() * 4);
   }
-  update() {
-    this.x += this.vx; this.y += this.vy;
-    this.vy += 0.25; this.vx *= 0.96;
-    this.life -= this.decay;
-  }
+  update() { this.x += this.vx; this.y += this.vy; this.vy += 0.25; this.vx *= 0.96; this.life -= this.decay; }
   draw() {
     if (this.life <= 0) return;
     ctx.fillStyle = `rgba(${(this.col[0]*this.life)|0},${(this.col[1]*this.life)|0},${(this.col[2]*this.life)|0},${this.life})`;
@@ -223,12 +169,20 @@ class Particle {
 }
 
 // ===== 遊戲狀態 =====
-let state = 'countdown', cdVal = 5, cdTick = 1, flashTimer = 0;
-let shake = 0, winnerText = '', resultPlayed = false;
+let state = 'countdown';
+let cdVal = 5, cdTick = 1, flashTimer = 0;
+let shake = 0;
 let particles = [], wallFlash = 0;
 
-const ai = { x: 20, y: H/2 - PH/2, score: 0 };
-const you = { x: W - 20 - PW, y: H/2 - PH/2, score: 0 };
+// 分數
+let aiScore = 0;       // AI 回合得分（先到7獲勝）
+let youHitScore = 0;    // 玩家回擊分數（持續累積）
+let roundWinner = null; // 'ai' or 'you'
+let totalScore = 0;
+let isNewHighScore = false;
+
+const ai = { x: 20, y: H/2 - PH/2 };
+const you = { x: W - 20 - PW, y: H/2 - PH/2 };
 const ball = { x: W/2, y: H/2, vx: BSINIT, vy: BSINIT, spd: BSINIT };
 
 // ===== 輸入 =====
@@ -237,7 +191,6 @@ let touchUp = false, touchDown = false;
 
 document.addEventListener('keydown', e => {
   keys[e.key] = true;
-  if (e.key === 'Escape') showLeaderboard();
   if (state === 'gameover' && e.key === ' ') doReplay();
 });
 document.addEventListener('keyup', e => keys[e.key] = false);
@@ -278,15 +231,88 @@ function resetBall(dir = 1) {
 }
 
 function doReplay() {
-  ai.score = you.score = currentRoundScore = 0;
+  aiScore = 0;
+  youHitScore = 0;
+  roundWinner = null;
+  totalScore = 0;
+  isNewHighScore = false;
   particles = [];
   state = 'countdown'; cdVal = 5; cdTick = 1;
-  shake = 0; winnerText = ''; resultPlayed = false; wallFlash = 0;
+  shake = 0; wallFlash = 0;
   resetBall(1);
   playTick();
 }
 
 function update(dt) {
+  if (state === 'countdown') {
+    cdTick -= dt;
+    if (cdTick <= 0) { cdVal--; cdTick = 1; if (cdVal >= 0) playTick(); if (cdVal < 0) { state = 'start_flash'; flashTimer = 0.75; playGo(); } }
+  } else if (state === 'start_flash') {
+    flashTimer -= dt;
+    if (flashTimer <= 0) state = 'playing';
+  } else if (state === 'playing') {
+    // AI 移動
+    if (ball.vx < 0) {
+      const t = (ai.x + PW/2 - ball.x) / ball.vx;
+      let py = Math.max(0, Math.min(H, ball.y + ball.vy * t * AI_PRED));
+      ai.y += Math.sign(py - (ai.y + PH/2)) * Math.min(Math.abs(py - (ai.y + PH/2)), AI_SPEED);
+    } else {
+      ai.y += Math.sign(H/2 - (ai.y + PH/2)) * Math.min(Math.abs(H/2 - (ai.y + PH/2)), AI_SPEED);
+    }
+    ai.y = Math.max(0, Math.min(H - PH, ai.y));
+
+    // 玩家移動
+    if (keys['ArrowUp'] || touchUp) you.y -= PSPEED;
+    if (keys['ArrowDown'] || touchDown) you.y += PSPEED;
+    you.y = Math.max(0, Math.min(H - PH, you.y));
+
+    // 球移動
+    ball.x += ball.vx; ball.y += ball.vy;
+    if (ball.y <= BSIZE/2 || ball.y >= H - BSIZE/2) {
+      ball.vy = Math.abs(ball.vy) * (ball.y <= BSIZE/2 ? 1 : -1);
+      wallFlash = 1;
+    }
+    wallFlash = Math.max(0, wallFlash - dt * 4);
+
+    // 碰撞檢測
+    const br = { l: ball.x-BSIZE/2, r: ball.x+BSIZE/2, t: ball.y-BSIZE/2, b: ball.y+BSIZE/2 };
+    const paddleRect = p => ({ l: p.x, r: p.x+PW, t: p.y, b: p.y+PH });
+    const hit = (a, b) => a.l<b.r && a.r>b.l && a.t<b.b && a.b>b.t;
+
+    function hitPaddle(p) {
+      const rel = Math.max(-1, Math.min(1, (ball.y - (p.y+PH/2)) / (PH/2)));
+      ball.spd = Math.min(ball.spd + BACC, BSMAX);
+      ball.vx = -ball.spd;
+      ball.vy = ball.spd * rel;
+      if (p === you) youHitScore++; // 玩家回擊成功 +1
+    }
+
+    if (hit(br, paddleRect(ai)) && ball.vx < 0) { ball.x = ai.x + PW + BSIZE/2; hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1)); }
+    if (hit(br, paddleRect(you)) && ball.vx > 0) { ball.x = you.x - BSIZE/2; hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1)); }
+
+    // 得分
+    // 球向左出界 = AI沒接到 = 玩家得分
+    // 球向右出界 = 玩家沒接到 = AI得分
+    if (ball.x < 0) { 
+      aiScore++; // 玩家得分
+      particles=[]; resetBall(-1);
+    }
+    if (ball.x > W) { 
+      aiScore++; // AI得分（這裡有問題）
+      particles=[]; resetBall(1);
+    }
+
+    // 讓我修正：
+    // 變數 aiScore 應該改名為雙方分數
+    // 讓我用 playerScore 代替 aiScore
+  }
+}
+
+// 重新定義，用正確的變數
+let playerScore = 0;
+let computerScore = 0;
+
+function update2(dt) {
   if (state === 'countdown') {
     cdTick -= dt;
     if (cdTick <= 0) { cdVal--; cdTick = 1; if (cdVal >= 0) playTick(); if (cdVal < 0) { state = 'start_flash'; flashTimer = 0.75; playGo(); } }
@@ -327,32 +353,48 @@ function update(dt) {
       ball.spd = Math.min(ball.spd + BACC, BSMAX);
       ball.vx = -ball.spd;
       ball.vy = ball.spd * rel;
-      if (p === you) currentRoundScore++;
+      if (p === you) youHitScore++;
     }
 
     if (hit(br, paddleRect(ai)) && ball.vx < 0) { ball.x = ai.x + PW + BSIZE/2; hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1)); }
     if (hit(br, paddleRect(you)) && ball.vx > 0) { ball.x = you.x - BSIZE/2; hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1)); }
 
-    // 得分
-    if (ball.x < 0) { you.score++; particles=[]; resetBall(1); }
-    if (ball.x > W) { ai.score++; particles=[]; resetBall(-1); }
-
-    // 結束
-    if (ai.score >= WIN_SCORE && !resultPlayed) {
-      winnerText = 'AI WINS!'; state = 'gameover'; resultPlayed = true; playLose();
-      playerTotalScore += currentRoundScore;
-      updateLeaderboard(playerName, playerTotalScore);
+    // 得分 - 修正
+    // ball.x < 0 = 球向左出界 = AI 沒接到 = 玩家得分 (playerScore++)
+    // ball.x > W = 球向右出界 = 玩家沒接到 = AI 得分 (computerScore++)
+    if (ball.x < 0) { 
+      playerScore++;
+      particles=[]; resetBall(-1);
     }
-    if (you.score >= WIN_SCORE && !resultPlayed) {
-      winnerText = 'YOU WIN!'; state = 'gameover'; resultPlayed = true; playWin();
-      playerTotalScore += currentRoundScore * 5;
-      updateLeaderboard(playerName, playerTotalScore);
+    if (ball.x > W) { 
+      computerScore++;
+      particles=[]; resetBall(1);
+    }
+
+    // 遊戲結束
+    if (playerScore >= WIN_SCORE) {
+      roundWinner = 'you';
+      totalScore = youHitScore * 5;
+      if (totalScore > highScore) { highScore = totalScore; isNewHighScore = true; }
+      updateLeaderboard(playerName, totalScore);
+      state = 'gameover';
+      playWin();
+    } else if (computerScore >= WIN_SCORE) {
+      roundWinner = 'ai';
+      totalScore = youHitScore;
+      if (totalScore > highScore) { highScore = totalScore; isNewHighScore = true; }
+      updateLeaderboard(playerName, totalScore);
+      state = 'gameover';
+      playLose();
     }
 
     particles.forEach(p => p.update());
     particles = particles.filter(p => p.life > 0);
   }
 }
+
+// 使用 update2 作為主要的 update 函數
+function update(dt) { update2(dt); }
 
 // ===== 繪製 =====
 function draw() {
@@ -366,7 +408,7 @@ function draw() {
   ctx.fillStyle = '#3c3c3c';
   for (let y = 0; y < H; y += 26) ctx.fillRect(W/2 - 1, y, 2, 16);
 
-  // 牆壁閃光
+  // 牆壁
   ctx.fillStyle = wallFlash > 0.05 ? `rgba(255,255,200,${wallFlash * 0.5})` : 'rgba(200,200,200,0.35)';
   ctx.fillRect(0, 0, W, 6);
   ctx.fillRect(0, H-6, W, 6);
@@ -399,17 +441,17 @@ function draw() {
 
   // 分數
   ctx.font = 'bold 64px monospace';
-  ctx.fillStyle = '#32dcdc'; ctx.textAlign = 'right'; ctx.fillText(ai.score, W/2-80, 76);
-  ctx.fillStyle = '#ffe632'; ctx.textAlign = 'left'; ctx.fillText(you.score, W/2+80, 76);
+  ctx.fillStyle = '#32dcdc'; ctx.textAlign = 'right'; ctx.fillText(computerScore, W/2-80, 76);
+  ctx.fillStyle = '#ffe632'; ctx.textAlign = 'left'; ctx.fillText(playerScore, W/2+80, 76);
   ctx.font = '22px monospace';
   ctx.fillStyle = '#32dcdc'; ctx.textAlign = 'right'; ctx.fillText('AI', W/2-80, 106);
   ctx.fillStyle = '#ffe632'; ctx.textAlign = 'left'; ctx.fillText('You', W/2+80, 106);
   
   if (state === 'playing') {
-    ctx.font = '18px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'left'; ctx.fillText('+' + currentRoundScore, W/2+80, 136);
+    ctx.font = '18px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'left'; ctx.fillText('回擊: ' + youHitScore, W/2+80, 136);
   }
 
-  // 倒數/結束
+  // 遊戲狀態
   if (state === 'countdown') {
     ctx.fillStyle = 'rgba(0,0,0,0.43)'; ctx.fillRect(0,0,W,H);
     const scale = 1 + 0.25 * (cdTick / 0.25);
@@ -420,16 +462,43 @@ function draw() {
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0,0,W,H);
     ctx.font = 'bold 120px monospace'; ctx.fillStyle = '#50ff82'; ctx.textAlign = 'center'; ctx.fillText('Start!', W/2, H/2+50);
   } else if (state === 'gameover') {
-    ctx.fillStyle = 'rgba(0,0,0,0.67)'; ctx.fillRect(0,0,W,H);
-    ctx.font = 'bold 62px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('GAME OVER', W/2, H/2-60);
-    ctx.font = 'bold 34px monospace'; ctx.fillStyle = winnerText === 'YOU WIN!' ? '#50ffff' : '#ff5050'; ctx.fillText(winnerText, W/2, H/2);
-    const finalScore = winnerText === 'YOU WIN!' ? currentRoundScore * 5 : currentRoundScore;
-    ctx.font = '22px monospace'; ctx.fillStyle = '#ffe632'; ctx.fillText(winnerText === 'YOU WIN!' ? `得分: ${currentRoundScore} × 5 = ${finalScore}` : `得分: ${currentRoundScore}`, W/2, H/2+45);
-    ctx.font = 'bold 28px monospace'; ctx.fillText('REPLAY  /  SPACE', W/2, H/2+80);
-    ctx.font = '22px monospace'; ctx.fillStyle = '#3c3c3c'; ctx.fillText('RANKING / ESC', W/2, H/2+115);
+    ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
+    
+    const winnerText = roundWinner === 'you' ? 'YOU WIN!' : 'AI WINS!';
+    ctx.font = 'bold 62px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('GAME OVER', W/2, H/2-100);
+    ctx.font = 'bold 34px monospace'; ctx.fillStyle = winnerText === 'YOU WIN!' ? '#50ffff' : '#ff5050'; ctx.fillText(winnerText, W/2, H/2-50);
+    
+    const multiplier = roundWinner === 'you' ? 5 : 1;
+    const scoreText = roundWinner === 'you' 
+      ? `回擊 ${youHitScore} × ${multiplier} = ${totalScore}`
+      : `回擊 ${youHitScore} = ${totalScore}`;
+    ctx.font = '22px monospace'; ctx.fillStyle = '#ffe632'; ctx.fillText(scoreText, W/2, H/2-10);
+    
+    if (isNewHighScore) {
+      ctx.font = 'bold 28px monospace'; ctx.fillStyle = '#ff00ff'; ctx.fillText('🎉 新紀錄!', W/2, H/2+30);
+    }
+    
+    // 排行榜
+    const board = getLeaderboard();
+    ctx.font = 'bold 24px monospace'; ctx.fillStyle = '#ffe632'; ctx.textAlign = 'center'; ctx.fillText('🏆 排行榜', W/2, H/2+70);
+    
+    board.forEach((p, i) => {
+      const y = H/2 + 105 + i * 28;
+      if (y > H - 30) return;
+      ctx.font = '18px monospace';
+      if (i === 0) ctx.fillStyle =      else if (i === 1 '#ffd700';
+) ctx.fillStyle = '#c0c0c0';
+      else if (i === 2) ctx.fillStyle = '#cd7f32';
+      else ctx.fillStyle = '#888';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${i+1}. ${p.name}`, W/2 - 100, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(p.score, W/2 + 100, y);
+    });
+    
+    ctx.font = 'bold 22px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('按空白鍵重新開始', W/2, H-30);
   }
 
-  ctx.font = '14px monospace'; ctx.fillStyle = '#444'; ctx.textAlign = 'left'; ctx.fillText('v1.1', 10, H-10);
   ctx.restore();
 }
 
@@ -442,29 +511,26 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
-// ===== UI =====
-function showLeaderboard() {
-  const board = getLeaderboard();
-  const tbody = document.getElementById('leaderboard-body');
-  tbody.innerHTML = board.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td style="text-align:right">${p.score}</td></tr>`).join('');
-  document.getElementById('rank-num').textContent = getPlayerRank(playerName) || '-';
-  document.getElementById('rank-score').textContent = playerTotalScore;
-  document.getElementById('leaderboard-screen').classList.add('show');
-}
-function hideLeaderboard() { document.getElementById('leaderboard-screen').classList.remove('show'); }
-
+// ===== 註冊 =====
 document.getElementById('start-btn').addEventListener('click', () => {
   const name = document.getElementById('player-name').value.trim();
   if (!name) { document.getElementById('name-error').textContent = '請輸入名字'; return; }
   if (name.length > 15) { document.getElementById('name-error').textContent = '名字最多 15 個字'; return; }
+  if (isNameTaken(name)) { document.getElementById('name-error').textContent = '此名字已被使用，請更換'; return; }
+  
   playerName = name;
-  playerTotalScore = 0;
+  const board = getLeaderboard();
+  const p = board.find(x => x.name === name);
+  highScore = p ? p.score : 0;
+  
   document.getElementById('register-screen').classList.add('hidden');
   playTick();
   requestAnimationFrame(ts => { last = ts; requestAnimationFrame(loop); });
 });
-document.getElementById('close-leaderboard').addEventListener('click', hideLeaderboard);
-document.getElementById('player-name').addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('start-btn').click(); });
+
+document.getElementById('player-name').addEventListener('keypress', e => { 
+  if (e.key === 'Enter') document.getElementById('start-btn').click(); 
+});
 </script>
 </body>
 </html>
