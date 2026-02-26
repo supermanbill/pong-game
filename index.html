@@ -65,7 +65,7 @@
 // ===== 常量 =====
 const W = 800, H = 600, H_CANVAS = 710;
 const PW = 12, PH = 90, PSPEED = 6;
-const AI_SPEED = 3.5, AI_PRED = 0.3;
+const AI_SPEED = 4.0, AI_PRED = 0.5;
 const BSIZE = 12, BSINIT = 3.5, BSMAX = 8, BACC = 0.2;
 const WIN_SCORE = 7;
 const DPAD_W = 150, DPAD_H = 76, DPAD_GAP = 20;
@@ -351,14 +351,26 @@ function update(dt) {
 }
 
 // ===== 繪製 =====
+// ===== 背景圖片 =====
+const bgImage = new Image();
+bgImage.src = 'background.png';
+
 function draw() {
   let ox = 0, oy = 0;
   if (shake > 0) { ox = (Math.random() - 0.5) * 8; oy = (Math.random() - 0.5) * 8; shake--; }
 
   ctx.save();
   ctx.translate(ox, oy);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H);
+  
+  // 繪製背景圖片
+  if (bgImage.complete) {
+    ctx.drawImage(bgImage, 0, 0, W, H);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // 半透明遮罩
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // 中線
   ctx.fillStyle = '#3c3c3c';
