@@ -375,10 +375,6 @@ function update(dt) {
 }
 
 // ===== 繪製 =====
-// ===== 背景圖片 =====
-const bgImage = new Image();
-bgImage.src = 'background.png';
-
 function draw() {
   let ox = 0, oy = 0;
   if (shake > 0) { ox = (Math.random() - 0.5) * 8; oy = (Math.random() - 0.5) * 8; shake--; }
@@ -386,15 +382,9 @@ function draw() {
   ctx.save();
   ctx.translate(ox, oy);
   
-  // 繪製背景圖片
-  if (bgImage.complete) {
-    ctx.drawImage(bgImage, 0, 0, W, H);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // 半透明遮罩
-    ctx.fillRect(0, 0, W, H);
-  } else {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, W, H);
-  }
+  // 黑色背景
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
 
   // 中線
   ctx.fillStyle = '#3c3c3c';
