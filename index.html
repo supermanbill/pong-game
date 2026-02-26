@@ -12,23 +12,50 @@
     #register-screen.hidden { display: none; }
     .register-box { background: rgba(255,255,255,0.05); border: 2px solid #32dcdc; border-radius: 16px; padding: 40px 50px; text-align: center; }
     .register-box h1 { color: #32dcdc; font-size: 32px; margin-bottom: 10px; }
-    .register-box p { color: #888; margin-bottom: 30px; font-size: 14px; }
+    .register-box .subtitle { color: #888; margin-bottom: 30px; font-size: 14px; }
     .register-box input { width: 250px; padding: 15px 20px; font-size: 20px; border: 2px solid #444; border-radius: 8px; background: #111; color: #fff; text-align: center; outline: none; }
     .register-box input:focus { border-color: #32dcdc; }
     .register-box button { display: block; width: 250px; margin: 20px auto 0; padding: 15px; font-size: 18px; font-weight: bold; color: #000; background: linear-gradient(135deg, #32dcdc, #28a8a8); border: none; border-radius: 8px; cursor: pointer; }
     .register-box button:hover { transform: scale(1.05); }
     .register-box .error { color: #ff5050; margin-top: 15px; font-size: 14px; }
+    
+    /* 驗證畫面 */
+    #verify-screen { display: none; flex-direction: column; align-items: center; }
+    #verify-screen.show { display: flex; }
+    .verify-box { background: rgba(255,255,255,0.05); border: 2px solid #ffe632; border-radius: 16px; padding: 30px 40px; text-align: center; margin-bottom: 20px; }
+    .verify-box p { color: #fff; font-size: 18px; margin-bottom: 20px; }
+    .verify-box .name-display { color: #ffe632; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    .verify-buttons { display: flex; gap: 15px; justify-content: center; }
+    .verify-buttons button { width: 120px; margin: 0; }
+    .verify-buttons .yes-btn { background: linear-gradient(135deg, #32dcdc, #28a8a8); }
+    .verify-buttons .no-btn { background: linear-gradient(135deg, #ff5050, #cc4040); }
   </style>
 </head>
 <body>
 
 <div id="register-screen">
-  <div class="register-box">
-    <h1>🏓 PONG</h1>
-    <p>請輸入你的名字開始遊戲</p>
-    <input type="text" id="player-name" placeholder="你的名字" maxlength="15" autocomplete="off">
-    <button id="start-btn">開始遊戲</button>
-    <p class="error" id="name-error"></p>
+  <!-- 註冊畫面 -->
+  <div id="register-form">
+    <div class="register-box">
+      <h1>🏓 PONG</h1>
+      <p class="subtitle">請輸入你的名字開始遊戲</p>
+      <input type="text" id="player-name" placeholder="你的名字" maxlength="15" autocomplete="off">
+      <button id="start-btn">開始遊戲</button>
+      <p class="error" id="name-error"></p>
+    </div>
+  </div>
+  
+  <!-- 驗證畫面 -->
+  <div id="verify-screen">
+    <div class="verify-box">
+      <p>這個名字已經存在</p>
+      <div class="name-display" id="verify-name"></div>
+      <p>請問這是你嗎？</p>
+      <div class="verify-buttons">
+        <button class="yes-btn" id="verify-yes">是本人</button>
+        <button class="no-btn" id="verify-no">不是</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -50,7 +77,10 @@ const DPAD_Y = H + 17;
 let playerName = '';
 let highScore = 0;
 
-// ===== 排行榜 =====
+// ===== 儲存功能 =====
+function getSavedName() { return localStorage.getItem('pong-player-name') || ''; }
+function savePlayerName(name) { localStorage.setItem('pong-player-name', name); }
+
 function getLeaderboard() { return JSON.parse(localStorage.getItem('pong-leaderboard') || '[]'); }
 function saveLeaderboard(board) { localStorage.setItem('pong-leaderboard', JSON.stringify(board)); }
 function updateLeaderboard(name, score) {
@@ -61,9 +91,10 @@ function updateLeaderboard(name, score) {
   board.sort((a, b) => b.score - a.score);
   saveLeaderboard(board.slice(0, 10));
 }
-function isNameTaken(name) { 
-  // 允許重複名字登入，直接取得過去分數
-  return false; 
+function getPlayerScore(name) {
+  const board = getLeaderboard();
+  const p = board.find(x => x.name === name);
+  return p ? p.score : 0;
 }
 
 // ===== Canvas =====
@@ -219,8 +250,6 @@ function update(dt) {
     if (flashTimer <= 0) state = 'playing';
   } else if (state === 'playing') {
     
-    // ===== 移動 =====
-    
     // AI 移動
     let targetY = ball.y;
     if (ball.vx < 0) {
@@ -235,7 +264,7 @@ function update(dt) {
     if (keys['ArrowDown'] || touchDown) you.y += PSPEED;
     you.y = Math.max(0, Math.min(H - PH, you.y));
 
-    // ===== 球移動 =====
+    // 球移動
     ball.x += ball.vx;
     ball.y += ball.vy;
 
@@ -246,27 +275,22 @@ function update(dt) {
       wallFlash = 1;
     }
     if (ball.y >= H - BSIZE/2) {
-      ball.y = H - BSIZE/2;
-      ball.vy = -Math.abs(ball.vy);
+      ball.y = H2;
+      ball - BSIZE/.vy = -Math.abs(ball.vy);
       wallFlash = 1;
     }
     wallFlash = Math.max(0, wallFlash - dt * 4);
 
-    // ===== 碰撞檢測 =====
+    // 碰撞檢測
     const ballLeft = ball.x - BSIZE/2;
     const ballRight = ball.x + BSIZE/2;
     const ballTop = ball.y - BSIZE/2;
     const ballBottom = ball.y + BSIZE/2;
 
-    // AI 擋板 (左側)
-    const aiRight = ai.x + PW;
-    const aiLeft = ai.x;
-    const aiTop = ai.y;
-    const aiBottom = ai.y + PH;
-    
-    if (ballLeft < aiRight && ballRight > aiLeft && ballTop < aiBottom && ballBottom > aiTop) {
+    // AI 擋板
+    if (ballLeft < ai.x + PW && ballRight > ai.x && ballTop < ai.y + PH && ballBottom > ai.y) {
       if (ball.vx < 0) {
-        ball.x = aiRight + BSIZE/2;
+        ball.x = ai.x + PW + BSIZE/2;
         const rel = (ball.y - (ai.y + PH/2)) / (PH/2);
         ball.spd = Math.min(ball.spd + BACC, BSMAX);
         ball.vx = ball.spd;
@@ -277,15 +301,10 @@ function update(dt) {
       }
     }
 
-    // 玩家擋板 (右側)
-    const youLeft = you.x;
-    const youRight = you.x + PW;
-    const youTop = you.y;
-    const youBottom = you.y + PH;
-    
-    if (ballRight > youLeft && ballLeft < youRight && ballTop < youBottom && ballBottom > youTop) {
+    // 玩家擋板
+    if (ballRight > you.x && ballLeft < you.x + PW && ballTop < you.y + PH && ballBottom > you.y) {
       if (ball.vx > 0) {
-        ball.x = youLeft - BSIZE/2;
+        ball.x = you.x - BSIZE/2;
         const rel = (ball.y - (you.y + PH/2)) / (PH/2);
         ball.spd = Math.min(ball.spd + BACC, BSMAX);
         ball.vx = -ball.spd;
@@ -297,21 +316,19 @@ function update(dt) {
       }
     }
 
-    // ===== 得分 =====
+    // 得分
     if (ball.x < -BSIZE) {
-      // 球向左出界 = AI沒接到 = 玩家得分
       playerScore++;
       particles = [];
       resetBall(-1);
     }
     if (ball.x > W + BSIZE) {
-      // 球向右出界 = 玩家沒接到 = AI得分
       aiScore++;
       particles = [];
       resetBall(1);
     }
 
-    // ===== 遊戲結束 =====
+    // 遊戲結束
     if (playerScore >= WIN_SCORE) {
       roundWinner = 'you';
       totalScore = youHitScore * 5;
@@ -496,25 +513,77 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
-// ===== 註冊 =====
-document.getElementById('start-btn').addEventListener('click', () => {
-  const name = document.getElementById('player-name').value.trim();
-  if (!name) { document.getElementById('name-error').textContent = '請輸入名字'; return; }
-  if (name.length > 15) { document.getElementById('name-error').textContent = '名字最多 15 個字'; return; }
-  // 名稱允許重複，直接取得現有分數
+// ===== 初始化 =====
+window.addEventListener('load', () => {
+  // 自動填充已儲存的名字
+  const savedName = getSavedName();
+  if (savedName) {
+    document.getElementById('player-name').value = savedName;
+  }
+});
 
+// ===== 註冊/驗證邏輯 =====
+const nameInput = document.getElementById('player-name');
+const startBtn = document.getElementById('start-btn');
+const nameError = document.getElementById('name-error');
+const registerForm = document.getElementById('register-form');
+const verifyScreen = document.getElementById('verify-screen');
+const verifyName = document.getElementById('verify-name');
+const verifyYes = document.getElementById('verify-yes');
+const verifyNo = document.getElementById('verify-no');
+
+let pendingName = '';
+
+function showVerify(name) {
+  pendingName = name;
+  verifyName.textContent = name;
+  registerForm.style.display = 'none';
+  verifyScreen.classList.add('show');
+}
+
+function startGame(name) {
   playerName = name;
-  const board = getLeaderboard();
-  const p = board.find(x => x.name === name);
-  highScore = p ? p.score : 0;
-
+  savePlayerName(name); // 儲存名字
+  highScore = getPlayerScore(name);
+  
   document.getElementById('register-screen').classList.add('hidden');
   playTick();
   requestAnimationFrame(ts => { last = ts; requestAnimationFrame(loop); });
+}
+
+startBtn.addEventListener('click', () => {
+  const name = nameInput.value.trim();
+  if (!name) { nameError.textContent = '請輸入名字'; return; }
+  if (name.length > 15) { nameError.textContent = '名字最多 15 個字'; return; }
+  
+  const board = getLeaderboard();
+  const existingPlayer = board.find(p => p.name === name);
+  
+  if (existingPlayer) {
+    // 名字已存在，詢問是否本人
+    showVerify(name);
+  } else {
+    // 新名字，直接開始
+    startGame(name);
+  }
 });
 
-document.getElementById('player-name').addEventListener('keypress', e => { 
-  if (e.key === 'Enter') document.getElementById('start-btn').click(); 
+verifyYes.addEventListener('click', () => {
+  // 是本人，開始遊戲
+  startGame(pendingName);
+});
+
+verifyNo.addEventListener('click', () => {
+  // 不是本人，隱藏驗證畫面，讓使用者輸入新名字
+  verifyScreen.classList.remove('show');
+  registerForm.style.display = 'block';
+  nameInput.value = '';
+  nameError.textContent = '此名字已被使用，請輸入新的名字';
+  nameInput.focus();
+});
+
+nameInput.addEventListener('keypress', e => { 
+  if (e.key === 'Enter') startBtn.click(); 
 });
 </script>
 </body>
