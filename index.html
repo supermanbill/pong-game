@@ -175,10 +175,10 @@ canvas.addEventListener('touchend', e => { e.preventDefault(); touchUp = false; 
 // ===== 遊戲邏輯 =====
 function resetBall(dir = 1) {
   ball.x = W/2;
-  ball.y = H/2;
+  ball.y = H/2 + (Math.random() - 0.5) * 200; // 隨機起始位置
   ball.spd = BSINIT;
   ball.vx = BSINIT * dir;
-  ball.vy = (Math.random() - 0.5) * BSINIT * 0.5; // 隨機角度
+  ball.vy = (Math.random() - 0.5) * BSINIT * 0.3; // 小的隨機垂直角度
 }
 
 function doReplay() {
