@@ -61,7 +61,10 @@ function updateLeaderboard(name, score) {
   board.sort((a, b) => b.score - a.score);
   saveLeaderboard(board.slice(0, 10));
 }
-function isNameTaken(name) { return getLeaderboard().some(p => p.name.toLowerCase() === name.toLowerCase()); }
+function isNameTaken(name) { 
+  // 允許重複名字登入，直接取得過去分數
+  return false; 
+}
 
 // ===== Canvas =====
 const canvas = document.getElementById('c');
@@ -498,7 +501,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   const name = document.getElementById('player-name').value.trim();
   if (!name) { document.getElementById('name-error').textContent = '請輸入名字'; return; }
   if (name.length > 15) { document.getElementById('name-error').textContent = '名字最多 15 個字'; return; }
-  if (isNameTaken(name)) { document.getElementById('name-error').textContent = '此名字已被使用，請更換'; return; }
+  // 名稱允許重複，直接取得現有分數
 
   playerName = name;
   const board = getLeaderboard();
