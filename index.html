@@ -577,9 +577,24 @@ function startGame(name) {
   const p = board.find(x => x.name === name);
   highScore = p ? p.score : 0;
   
-  document.getElementById('register-screen').classList.add('hidden');
+  // 隱藏註冊畫面
+  document.getElementById('register-screen').style.display = 'none';
+  
+  // 重置遊戲狀態
+  state = 'countdown';
+  cdVal = 5;
+  cdTick = 1;
+  playerScore = 0;
+  computerScore = 0;
+  youHitScore = 0;
+  resetBall(1);
+  
+  // 確保 last 是正確的時間
+  last = performance.now();
+  
+  // 開始遊戲迴圈
   playTick();
-  requestAnimationFrame(ts => { last = ts; requestAnimationFrame(loop); });
+  requestAnimationFrame(loop);
 }
 
 document.getElementById('player-name').addEventListener('keypress', e => { 
