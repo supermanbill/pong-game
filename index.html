@@ -554,7 +554,7 @@ function startGame(name) {
   savePlayerName(name); // 儲存名字
   highScore = getPlayerScore(name);
   
-  initAudio(); // 初始化音效
+  getAudio(); // 初始化音效
   
   document.getElementById('register-screen').classList.add('hidden');
   playTick();
