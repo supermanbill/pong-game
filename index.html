@@ -191,7 +191,7 @@ let touchUp = false, touchDown = false;
 
 document.addEventListener('keydown', e => {
   keys[e.key] = true;
-  if (state === 'gameover' && e.key === ' ') doReplay();
+  if (state === 'gameover' && e.key === ' ') { e.preventDefault(); doReplay(); }
 });
 document.addEventListener('keyup', e => keys[e.key] = false);
 
