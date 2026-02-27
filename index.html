@@ -247,6 +247,8 @@ let playerName = '';
 let playerTotalScore = 0;      // 玩家累積總分
 let currentRoundScore = 0;     // 這回合得分（接到球 +1）
 let roundWin = false;           // 這回合是否贏了
+let previousHighScore = 0;      // 過往最高分
+let isNewRecord = false;        // 是否破紀錄
 
 // 使用 localStorage 儲存排行榜
 function getLeaderboard() {
@@ -258,15 +260,21 @@ function saveLeaderboard(board) {
   localStorage.setItem('pong-leaderboard', JSON.stringify(board));
 }
 
-function updateLeaderboard(name, score) {
+function updateLeaderboard(name, score, isWin) {
   let board = getLeaderboard();
   
   // 找到現有玩家或新增
   const existing = board.find(p => p.name === name);
   if (existing) {
-    existing.score += score;
+    // 只有贏的時候才會加分（×5 或 ×1），輸了不加分
+    if (isWin) {
+      existing.score += score;
+    }
   } else {
-    board.push({ name: name, score: score });
+    // 新玩家第一次贏了才會加入排行榜
+    if (isWin) {
+      board.push({ name: name, score: score });
+    }
   }
   
   // 排序並保留前 10 名
@@ -275,6 +283,18 @@ function updateLeaderboard(name, score) {
   
   saveLeaderboard(board);
   return board;
+}
+
+// 檢查是否破紀錄
+function checkNewRecord(name, score) {
+  const board = getLeaderboard();
+  const player = board.find(p => p.name === name);
+  if (player) {
+    // 如果這個玩家的分數低於傳入的分數，就是新紀錄
+    // 但因為我們已經加過分了，所以要回傳是否比之前的自己高
+    return player.score === score && score > 0;
+  }
+  return score > 0; // 新玩家第一次贏就是新紀錄
 }
 
 function getPlayerRank(name) {
@@ -442,6 +462,11 @@ function doReplay() {
   ai.score = 0; you.score = 0;
   currentRoundScore = 0;  // 重設回合得分
   roundWin = false;
+  isNewRecord = false;
+  // 取得過往最高分
+  const board = getLeaderboard();
+  const player = board.find(p => p.name === playerName);
+  previousHighScore = player ? player.score : 0;
   resetBall(1);
   particles = [];
   state = 'countdown'; cdVal = 5; cdTick = 1.0; flashTimer = 0;
@@ -534,23 +559,39 @@ function update(dt) {
     // 遊戲結束
     if (ai.score >= WIN_SCORE && !resultPlayed) {
       winnerText = 'AI WINS!'; 
+      roundWin = false;
       state = 'gameover'; 
       resultPlayed = true; 
       playLose();
       // 計算並儲存分數（輸了 ×1）
       const finalScore = currentRoundScore * 1;
       playerTotalScore += finalScore;
-      updateLeaderboard(playerName, playerTotalScore);
+      // 檢查是否破紀錄
+      const oldHigh = previousHighScore;
+      updateLeaderboard(playerName, finalScore, true);
+      const myRank = getPlayerRank(playerName);
+      const board = getLeaderboard();
+      const myScore = board.find(p => p.name === playerName)?.score || 0;
+      isNewRecord = myScore > oldHigh && myRank === 1;
+      previousHighScore = Math.max(previousHighScore, myScore);
     }
     if (you.score >= WIN_SCORE && !resultPlayed) {
       winnerText = 'YOU WIN!'; 
+      roundWin = true;
       state = 'gameover'; 
       resultPlayed = true; 
       playWin();
       // 計算並儲存分數（贏了 ×5）
       const finalScore = currentRoundScore * 5;
       playerTotalScore += finalScore;
-      updateLeaderboard(playerName, playerTotalScore);
+      // 檢查是否破紀錄
+      const oldHigh = previousHighScore;
+      updateLeaderboard(playerName, finalScore, true);
+      const myRank = getPlayerRank(playerName);
+      const board = getLeaderboard();
+      const myScore = board.find(p => p.name === playerName)?.score || 0;
+      isNewRecord = myScore > oldHigh;
+      previousHighScore = Math.max(previousHighScore, myScore);
     }
 
     particles.forEach(p => p.update());
@@ -702,8 +743,15 @@ function draw() {
     const scoreText = roundWin ? `得分: ${currentRoundScore} × 5 = ${roundScore}` : `得分: ${currentRoundScore}`;
     text(scoreText, W/2, H/2+45, '22px monospace', '#ffe632', 'center');
     
-    text('REPLAY  /  SPACE', W/2, H/2+80,  'bold 28px monospace', '#ffe632',  'center');
-    text('RANKING / ESC', W/2, H/2+115,  '22px monospace', '#3c3c3c',  'center');
+    // 顯示新紀錄訊息
+    if (isNewRecord) {
+      text('🎉 新紀錄!', W/2, H/2+75, 'bold 28px monospace', '#50ff82', 'center');
+      text('REPLAY  /  SPACE', W/2, H/2+110,  'bold 28px monospace', '#ffe632',  'center');
+      text('RANKING / ESC', W/2, H/2+145,  '22px monospace', '#3c3c3c',  'center');
+    } else {
+      text('REPLAY  /  SPACE', W/2, H/2+80,  'bold 28px monospace', '#ffe632',  'center');
+      text('RANKING / ESC', W/2, H/2+115,  '22px monospace', '#3c3c3c',  'center');
+    }
   }
 
   // 版本號顯示
@@ -740,23 +788,37 @@ function hideRegister() {
 function showLeaderboard() {
   const board = getLeaderboard();
   const myRank = getPlayerRank(playerName);
+  const myScore = board.find(p => p.name === playerName)?.score || 0;
   
   // 更新我的排名資訊
   document.getElementById('rank-num').textContent = myRank ? '#' + myRank : '-';
-  document.getElementById('rank-score').textContent = playerTotalScore;
+  document.getElementById('rank-score').textContent = myScore;
   
   // 渲染排行榜
   const tbody = document.getElementById('leaderboard-body');
   tbody.innerHTML = '';
   board.forEach((p, i) => {
     const tr = document.createElement('tr');
+    const isMe = p.name === playerName;
+    const isTop1 = i === 0;
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td>${p.name}</td>
-      <td style="text-align:right">${p.score}</td>
+      <td style="${isMe ? 'color:#32dcdc;font-weight:bold' : ''}">${p.name}${isMe ? ' (你)' : ''}</td>
+      <td style="text-align:right;${isTop1 ? 'color:#ffd700' : ''}">${p.score}${isTop1 ? ' 👑' : ''}</td>
     `;
     tbody.appendChild(tr);
   });
+  
+  // 顯示新紀錄提示
+  if (isNewRecord) {
+    const myRankDiv = document.getElementById('my-rank-info');
+    myRankDiv.innerHTML = `
+      <div style="color:#50ff82;font-size:24px;font-weight:bold;margin-bottom:10px">🎉 新紀錄!</div>
+      <div>你的排名：<span class="rank-num" id="rank-num">#${myRank}</span></div>
+      <div>總分：<span class="rank-score" id="rank-score">${myScore}</span></div>
+      <div style="color:#888;font-size:14px;margin-top:5px">過往最高：${previousHighScore}</div>
+    `;
+  }
   
   leaderboardScreen.classList.add('show');
 }
@@ -779,6 +841,11 @@ startBtn.addEventListener('click', () => {
   
   playerName = name;
   playerTotalScore = 0;
+  isNewRecord = false;
+  // 取得過往最高分
+  const board = getLeaderboard();
+  const player = board.find(p => p.name === name);
+  previousHighScore = player ? player.score : 0;
   nameError.textContent = '';
   hideRegister();
   playTick();
