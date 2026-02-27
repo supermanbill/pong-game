@@ -95,7 +95,7 @@
 // ===== 常量 =====
 const W = 800, H = 600, H_CANVAS = 710;
 const PW = 12, PH = 90, PSPEED = 6;
-const AI_SPEED = 2.0, AI_PRED = 0.15;
+const AI_SPEED = 2.0, AI_PRED = 0.05;
 const BSIZE = 12, BSINIT = 3.5, BSMAX = 8, BACC = 0.2;
 const WIN_SCORE = 7;
 const DPAD_W = 150, DPAD_H = 76, DPAD_GAP = 20;
@@ -441,10 +441,24 @@ function draw() {
     
     // 排行榜
     const board = getLeaderboard();
-    ctx.font = 'bold 24px monospace'; ctx.fillStyle = '#ffe632'; ctx.textAlign = 'center'; ctx.fillText('🏆 排行榜', W/2, H/2+70);
+    const totalPlayers = board.length;
+    
+    // 總遊戲人數
+    ctx.font = '16px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center'; 
+    ctx.fillText(`🏅 總參與人數: ${totalPlayers} 人`, W/2, H/2+55);
+    
+    // 我的排名和分數
+    if (playerName) {
+      const myRank = getPlayerRank(playerName);
+      const myScore = board.find(p => p.name === playerName)?.score || 0;
+      ctx.font = 'bold 20px monospace'; ctx.fillStyle = '#32dcdc'; ctx.textAlign = 'center'; 
+      ctx.fillText(`你的排名: #${myRank || '-'} | 總分: ${myScore}`, W/2, H/2+85);
+    }
+    
+    ctx.font = 'bold 24px monospace'; ctx.fillStyle = '#ffe632'; ctx.textAlign = 'center'; ctx.fillText('🏆 排行榜', W/2, H/2+120);
     
     board.forEach((p, i) => {
-      const y = H/2 + 105 + i * 28;
+      const y = H/2 + 155 + i * 28;
       if (y > H - 30) return;
       ctx.font = '18px monospace';
       if (i === 0) ctx.fillStyle = '#ffd700';
