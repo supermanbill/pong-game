@@ -95,8 +95,8 @@
 // ===== 常量 =====
 const W = 800, H = 600, H_CANVAS = 710;
 const PW = 12, PH = 90, PSPEED = 6;
-const AI_SPEED = 2.0, AI_PRED = 0.05;
-const BSIZE = 12, BSINIT = 3.5, BSMAX = 8, BACC = 0.2;
+const AI_SPEED = 2.5, AI_PRED = 0.20;
+const BSIZE = 36, BSINIT = 3.5, BSMAX = 8, BACC = 0.2;
 const WIN_SCORE = 7;
 const DPAD_W = 150, DPAD_H = 76, DPAD_GAP = 20;
 const DPAD_LX = W/2 - DPAD_W - DPAD_GAP/2;
@@ -357,6 +357,54 @@ function update2(dt) {
 // 使用 update2 作為主要的 update 函數
 function update(dt) { update2(dt); }
 
+// ===== 繪製小紅魚 =====
+function drawFish(x, y, vx) {
+  const size = BSIZE / 2; // 半徑
+  const direction = vx > 0 ? 1 : -1; // 根據球的方向決定魚頭方向
+  
+  ctx.save();
+  ctx.translate(x, y);
+  if (direction < 0) ctx.scale(-1, 1); // 向左飛時翻轉
+  
+  // 魚身（紅色圓形）
+  ctx.fillStyle = '#ff4444';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size * 0.9, size * 0.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 魚尾（三角形）
+  ctx.fillStyle = '#ff4444';
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.7, 0);
+  ctx.lineTo(-size * 1.4, -size * 0.6);
+  ctx.lineTo(-size * 1.4, size * 0.6);
+  ctx.closePath();
+  ctx.fill();
+  
+  // 魚眼（白色底）
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(size * 0.3, -size * 0.1, size * 0.35, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 魚眼（黑色瞳孔）
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.arc(size * 0.4, -size * 0.1, size * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 魚鰭（背鰭）
+  ctx.fillStyle = '#ff6666';
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.6);
+  ctx.lineTo(size * 0.2, -size * 1.0);
+  ctx.lineTo(-size * 0.2, -size * 0.6);
+  ctx.closePath();
+  ctx.fill();
+  
+  ctx.restore();
+}
+
 // ===== 繪製 =====
 function draw() {
   let ox = 0, oy = 0;
@@ -378,10 +426,9 @@ function draw() {
   ctx.fillStyle = '#32dcdc'; ctx.fillRect(ai.x, ai.y, PW, PH);
   ctx.fillStyle = '#ffe632'; ctx.fillRect(you.x, you.y, PW, PH);
 
-  // 球
+  // 球 - 小紅魚
   if (state === 'playing' || state === 'gameover') {
-    ctx.fillStyle = '#ffff00'; ctx.beginPath(); ctx.arc(ball.x, ball.y, BSIZE/2, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x-2, ball.y-2, 2, 0, Math.PI*2); ctx.fill();
+    drawFish(ball.x, ball.y, ball.vx);
   }
 
   // 粒子
