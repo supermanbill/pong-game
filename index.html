@@ -95,7 +95,7 @@
 // ===== 常量 =====
 const W = 800, H = 600, H_CANVAS = 710;
 const PW = 12, PH = 90, PSPEED = 6;
-const AI_SPEED = 2.5, AI_PRED = 0.20;
+const AI_SPEED = 2.0, AI_PRED = 0.15;
 const BSIZE = 36, BSINIT = 3.5, BSMAX = 8, BACC = 0.2;
 const WIN_SCORE = 7;
 const DPAD_W = 150, DPAD_H = 76, DPAD_GAP = 20;
@@ -473,55 +473,53 @@ function draw() {
     ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
     
     const winnerText = roundWinner === 'you' ? 'YOU WIN!' : 'AI WINS!';
-    ctx.font = 'bold 62px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('GAME OVER', W/2, H/2-100);
-    ctx.font = 'bold 34px monospace'; ctx.fillStyle = winnerText === 'YOU WIN!' ? '#50ffff' : '#ff5050'; ctx.fillText(winnerText, W/2, H/2-50);
+    ctx.font = 'bold 48px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('GAME OVER', W/2, 120);
+    ctx.font = 'bold 28px monospace'; ctx.fillStyle = winnerText === 'YOU WIN!' ? '#50ffff' : '#ff5050'; ctx.fillText(winnerText, W/2, 160);
     
     const multiplier = roundWinner === 'you' ? 5 : 1;
     const scoreText = roundWinner === 'you' 
-      ? `回擊 ${youHitScore} × ${multiplier} = ${totalScore}`
-      : `回擊 ${youHitScore} = ${totalScore}`;
-    ctx.font = '22px monospace'; ctx.fillStyle = '#ffe632'; ctx.fillText(scoreText, W/2, H/2-10);
+      ? `本局回擊 ${youHitScore} × ${multiplier} = ${totalScore} 分`
+      : `本局回擊 ${youHitScore} = ${totalScore} 分`;
+    ctx.font = '18px monospace'; ctx.fillStyle = '#ffe632'; ctx.fillText(scoreText, W/2, 195);
     
     if (isNewHighScore) {
-      ctx.font = 'bold 28px monospace'; ctx.fillStyle = '#ff00ff'; ctx.fillText('🎉 新紀錄!', W/2, H/2+30);
+      ctx.font = 'bold 22px monospace'; ctx.fillStyle = '#ff00ff'; ctx.fillText('🎉 新紀錄!', W/2, 225);
     }
     
     // 排行榜
     const board = getLeaderboard();
     const totalPlayers = board.length;
     
-    // 總遊戲人數
+    // 總參與人數
     ctx.font = '16px monospace'; ctx.fillStyle = '#888'; ctx.textAlign = 'center'; 
-    ctx.fillText(`🏅 總參與人數: ${totalPlayers} 人`, W/2, H/2+55);
+    ctx.fillText(`🏅 總參與累積人數: ${totalPlayers} 人`, W/2, 260);
     
-    // 我的排名和分數
+    // 我的排名和分數（無論有沒有上榜都顯示）
     if (playerName) {
       const myRank = getPlayerRank(playerName);
       const myScore = board.find(p => p.name === playerName)?.score || 0;
-      ctx.font = 'bold 20px monospace'; ctx.fillStyle = '#32dcdc'; ctx.textAlign = 'center'; 
-      ctx.fillText(`你的排名: #${myRank || '-'} | 總分: ${myScore}`, W/2, H/2+85);
+      ctx.font = 'bold 18px monospace'; ctx.fillStyle = '#32dcdc'; ctx.textAlign = 'center'; 
+      ctx.fillText(`你的總分: ${myScore} 分 | 排名: #${myRank || '-'}`, W/2, 290);
     }
     
-    ctx.font = 'bold 24px monospace'; ctx.fillStyle = '#ffe632'; ctx.textAlign = 'center'; ctx.fillText('🏆 排行榜', W/2, H/2+120);
+    // 排行榜標題
+    ctx.font = 'bold 22px monospace'; ctx.fillStyle = '#ffe632'; ctx.textAlign = 'center'; ctx.fillText('🏆 英雄榜 TOP 10', W/2, 330);
     
     board.forEach((p, i) => {
-      const y = H/2 + 155 + i * 28;
-      if (y > H - 30) return;
-      ctx.font = '18px monospace';
+      const y = 360 + i * 26;
+      if (y > H - 50) return;
+      ctx.font = '16px monospace';
       if (i === 0) ctx.fillStyle = '#ffd700';
       else if (i === 1) ctx.fillStyle = '#c0c0c0';
       else if (i === 2) ctx.fillStyle = '#cd7f32';
       else ctx.fillStyle = '#888';
       ctx.textAlign = 'left';
-      ctx.fillText(`${i+1}. ${p.name}`, W/2 - 100, y);
+      ctx.fillText(`${i+1}. ${p.name}`, W/2 - 80, y);
       ctx.textAlign = 'right';
-      ctx.fillText(p.score, W/2 + 100, y);
+      ctx.fillText(p.score + ' 分', W/2 + 80, y);
     });
     
-    ctx.font = 'bold 22px monospace'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText('按任意鍵重新開始', W/2, H-30);
-  }
-
-  ctx.restore();
+    ctx.restore();
 }
 
 // ===== 迴圈 =====
