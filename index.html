@@ -288,22 +288,24 @@ function update(dt) {
       if (p === you) youHitScore++; // 玩家回擊成功 +1
     }
 
-    // 碰撞檢測 - 使用冷卻時間防止黏住
-    if (ball.cooldown <= 0) {
-      if (hit(br, paddleRect(ai)) && ball.vx < 0) { 
-        ball.x = ai.x + PW + BSIZE + 10;
-        ball.vx = Math.abs(ball.vx);
-        ball.cooldown = 10;
-        hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
+    // 碰撞檢測 - 終極簡化版（只用位置判斷）
+    // AI 拍子（在左邊）
+    if (ball.x <= ai.x + PW + BSIZE && ball.x >= ai.x - BSIZE && ball.y >= ai.y - BSIZE && ball.y <= ai.y + PH + BSIZE) {
+      if (ball.vx < 0) {
+        ball.vx = Math.abs(ball.spd);
+        ball.x = ai.x + PW + BSIZE + 2;
+        youHitScore++;
+        shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
       }
-      else if (hit(br, paddleRect(you)) && ball.vx > 0) { 
-        ball.x = you.x - BSIZE - 10;
-        ball.vx = -Math.abs(ball.vx);
-        ball.cooldown = 10;
-        hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+    }
+    // 玩家拍子（在右邊）
+    if (ball.x >= you.x - BSIZE && ball.x <= you.x + PW + BSIZE && ball.y >= you.y - BSIZE && ball.y <= you.y + PH + BSIZE) {
+      if (ball.vx > 0) {
+        ball.vx = -Math.abs(ball.spd);
+        ball.x = you.x - BSIZE - 2;
+        youHitScore++;
+        shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
       }
-    } else {
-      ball.cooldown--;
     }
 
     // 得分
@@ -372,22 +374,24 @@ function update2(dt) {
       if (p === you) youHitScore++;
     }
 
-    // 碰撞檢測 - 使用冷卻時間防止黏住
-    if (ball.cooldown <= 0) {
-      if (hit(br, paddleRect(ai)) && ball.vx < 0) { 
-        ball.x = ai.x + PW + BSIZE + 10;
-        ball.vx = Math.abs(ball.vx);
-        ball.cooldown = 10;
-        hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
+    // 碰撞檢測 - 終極簡化版（只用位置判斷）
+    // AI 拍子（在左邊）
+    if (ball.x <= ai.x + PW + BSIZE && ball.x >= ai.x - BSIZE && ball.y >= ai.y - BSIZE && ball.y <= ai.y + PH + BSIZE) {
+      if (ball.vx < 0) {
+        ball.vx = Math.abs(ball.spd);
+        ball.x = ai.x + PW + BSIZE + 2;
+        youHitScore++;
+        shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
       }
-      else if (hit(br, paddleRect(you)) && ball.vx > 0) { 
-        ball.x = you.x - BSIZE - 10;
-        ball.vx = -Math.abs(ball.vx);
-        ball.cooldown = 10;
-        hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+    }
+    // 玩家拍子（在右邊）
+    if (ball.x >= you.x - BSIZE && ball.x <= you.x + PW + BSIZE && ball.y >= you.y - BSIZE && ball.y <= you.y + PH + BSIZE) {
+      if (ball.vx > 0) {
+        ball.vx = -Math.abs(ball.spd);
+        ball.x = you.x - BSIZE - 2;
+        youHitScore++;
+        shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
       }
-    } else {
-      ball.cooldown--;
     }
 
     // 得分 - 修正
