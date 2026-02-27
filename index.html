@@ -183,7 +183,7 @@ let isNewHighScore = false;
 
 const ai = { x: 20, y: H/2 - PH/2 };
 const you = { x: W - 20 - PW, y: H/2 - PH/2 };
-const ball = { x: W/2, y: H/2, vx: BSINIT, vy: BSINIT, spd: BSINIT };
+const ball = { x: W/2, y: H/2, vx: BSINIT, vy: BSINIT, spd: BSINIT, cooldown: 0 };
 
 // ===== 輸入 =====
 const keys = {};
@@ -228,6 +228,7 @@ function resetBall(dir = 1) {
   ball.spd = BSINIT;
   ball.vx = BSINIT * dir;
   ball.vy = BSINIT * (dir > 0 ? 1 : -1);
+  ball.cooldown = 0;
 }
 
 function doReplay() {
@@ -287,18 +288,22 @@ function update(dt) {
       if (p === you) youHitScore++; // 玩家回擊成功 +1
     }
 
-    // 碰撞檢測 - 修復黏住問題
-    // AI 拍子：球必須從左邊過來且向右移動
-    if (hit(br, paddleRect(ai)) && ball.vx < 0 && ball.x < ai.x + PW + BSIZE) { 
-      ball.x = ai.x + PW + BSIZE + 5;
-      ball.vx = Math.abs(ball.vx);
-      hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
-    }
-    // 玩家拍子：球必須從右邊過來且向左移動
-    else if (hit(br, paddleRect(you)) && ball.vx > 0 && ball.x > you.x - BSIZE) { 
-      ball.x = you.x - BSIZE - 5;
-      ball.vx = -Math.abs(ball.vx);
-      hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+    // 碰撞檢測 - 使用冷卻時間防止黏住
+    if (ball.cooldown <= 0) {
+      if (hit(br, paddleRect(ai)) && ball.vx < 0) { 
+        ball.x = ai.x + PW + BSIZE + 10;
+        ball.vx = Math.abs(ball.vx);
+        ball.cooldown = 10;
+        hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
+      }
+      else if (hit(br, paddleRect(you)) && ball.vx > 0) { 
+        ball.x = you.x - BSIZE - 10;
+        ball.vx = -Math.abs(ball.vx);
+        ball.cooldown = 10;
+        hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+      }
+    } else {
+      ball.cooldown--;
     }
 
     // 得分
@@ -367,18 +372,22 @@ function update2(dt) {
       if (p === you) youHitScore++;
     }
 
-    // 碰撞檢測 - 修復黏住問題
-    // AI 拍子：球必須從左邊過來且向右移動
-    if (hit(br, paddleRect(ai)) && ball.vx < 0 && ball.x < ai.x + PW + BSIZE) { 
-      ball.x = ai.x + PW + BSIZE + 5;
-      ball.vx = Math.abs(ball.vx);
-      hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
-    }
-    // 玩家拍子：球必須從右邊過來且向左移動
-    else if (hit(br, paddleRect(you)) && ball.vx > 0 && ball.x > you.x - BSIZE) { 
-      ball.x = you.x - BSIZE - 5;
-      ball.vx = -Math.abs(ball.vx);
-      hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+    // 碰撞檢測 - 使用冷卻時間防止黏住
+    if (ball.cooldown <= 0) {
+      if (hit(br, paddleRect(ai)) && ball.vx < 0) { 
+        ball.x = ai.x + PW + BSIZE + 10;
+        ball.vx = Math.abs(ball.vx);
+        ball.cooldown = 10;
+        hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
+      }
+      else if (hit(br, paddleRect(you)) && ball.vx > 0) { 
+        ball.x = you.x - BSIZE - 10;
+        ball.vx = -Math.abs(ball.vx);
+        ball.cooldown = 10;
+        hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+      }
+    } else {
+      ball.cooldown--;
     }
 
     // 得分 - 修正
