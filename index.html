@@ -78,6 +78,10 @@
     <p>請輸入你的名字開始遊戲</p>
     <input type="text" id="player-name" placeholder="你的名字" maxlength="15" autocomplete="off">
     <button id="start-btn">開始遊戲</button>
+    <div id="existing-player-options" style="display:none; margin-top:15px;">
+      <button id="continue-btn" style="background:#32dcdc;">是本人繼續玩</button>
+      <button id="rename-btn" style="background:#ff9900; margin-top:8px;">新人重新命名</button>
+    </div>
     <p class="error" id="name-error"></p>
   </div>
 </div>
@@ -88,7 +92,7 @@
 // ===== 常量 =====
 const W = 800, H = 600, H_CANVAS = 710;
 const PW = 12, PH = 90, PSPEED = 6;
-const AI_SPEED = 3.5, AI_PRED = 0.3;
+const AI_SPEED = 3.0, AI_PRED = 0.25;
 const BSIZE = 12, BSINIT = 3.5, BSMAX = 8, BACC = 0.2;
 const WIN_SCORE = 7;
 const DPAD_W = 150, DPAD_H = 76, DPAD_GAP = 20;
@@ -466,12 +470,43 @@ function loop(ts) {
 }
 
 // ===== 註冊 =====
+let pendingName = ''; // 儲存待確認的名字
+
 document.getElementById('start-btn').addEventListener('click', () => {
   const name = document.getElementById('player-name').value.trim();
   if (!name) { document.getElementById('name-error').textContent = '請輸入名字'; return; }
   if (name.length > 15) { document.getElementById('name-error').textContent = '名字最多 15 個字'; return; }
-  if (isNameTaken(name)) { document.getElementById('name-error').textContent = '此名字已被使用，請更換'; return; }
   
+  if (isNameTaken(name)) {
+    // 顯示選項按鈕
+    pendingName = name;
+    document.getElementById('name-error').textContent = '此名字已存在';
+    document.getElementById('existing-player-options').style.display = 'block';
+    document.getElementById('start-btn').style.display = 'none';
+    return;
+  }
+  
+  startGame(name);
+});
+
+// 繼續遊戲（本人）
+document.getElementById('continue-btn').addEventListener('click', () => {
+  if (pendingName) {
+    startGame(pendingName);
+  }
+});
+
+// 重新命名（新人）
+document.getElementById('rename-btn').addEventListener('click', () => {
+  pendingName = '';
+  document.getElementById('player-name').value = '';
+  document.getElementById('name-error').textContent = '請使用不同名字';
+  document.getElementById('existing-player-options').style.display = 'none';
+  document.getElementById('start-btn').style.display = 'block';
+  document.getElementById('player-name').focus();
+});
+
+function startGame(name) {
   playerName = name;
   const board = getLeaderboard();
   const p = board.find(x => x.name === name);
@@ -480,7 +515,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   document.getElementById('register-screen').classList.add('hidden');
   playTick();
   requestAnimationFrame(ts => { last = ts; requestAnimationFrame(loop); });
-});
+}
 
 document.getElementById('player-name').addEventListener('keypress', e => { 
   if (e.key === 'Enter') document.getElementById('start-btn').click(); 
