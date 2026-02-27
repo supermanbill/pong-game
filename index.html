@@ -287,8 +287,20 @@ function update(dt) {
       if (p === you) youHitScore++; // 玩家回擊成功 +1
     }
 
-    if (hit(br, paddleRect(ai)) && ball.vx < 0) { ball.x = ai.x + PW + BSIZE/2; hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1)); }
-    if (hit(br, paddleRect(you)) && ball.vx > 0) { ball.x = you.x - BSIZE/2; hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1)); }
+    // 碰撞檢測（加入冷卻避免重複撞擊）
+    let ballHit = false;
+    if (hit(br, paddleRect(ai)) && ball.vx < 0 && !ballHit) { 
+      ball.x = ai.x + PW + BSIZE/2 + 1; 
+      ball.vx = Math.abs(ball.vx); // 強制向右
+      hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
+      ballHit = true;
+    }
+    if (hit(br, paddleRect(you)) && ball.vx > 0 && !ballHit) { 
+      ball.x = you.x - BSIZE/2 - 1; 
+      ball.vx = -Math.abs(ball.vx); // 強制向左
+      hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+      ballHit = true;
+    }
 
     // 得分
     // 球向左出界 = AI沒接到 = 玩家得分
@@ -356,8 +368,20 @@ function update2(dt) {
       if (p === you) youHitScore++;
     }
 
-    if (hit(br, paddleRect(ai)) && ball.vx < 0) { ball.x = ai.x + PW + BSIZE/2; hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1)); }
-    if (hit(br, paddleRect(you)) && ball.vx > 0) { ball.x = you.x - BSIZE/2; hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1)); }
+    // 碰撞檢測（加入冷卻避免重複撞擊）
+    let ballHit = false;
+    if (hit(br, paddleRect(ai)) && ball.vx < 0 && !ballHit) { 
+      ball.x = ai.x + PW + BSIZE/2 + 1; 
+      ball.vx = Math.abs(ball.vx); // 強制向右
+      hitPaddle(ai); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,1));
+      ballHit = true;
+    }
+    if (hit(br, paddleRect(you)) && ball.vx > 0 && !ballHit) { 
+      ball.x = you.x - BSIZE/2 - 1; 
+      ball.vx = -Math.abs(ball.vx); // 強制向左
+      hitPaddle(you); shake = 6; playHit(ball.spd); for(let i=0;i<14;i++)particles.push(new Particle(ball.x,ball.y,-1));
+      ballHit = true;
+    }
 
     // 得分 - 修正
     // ball.x < 0 = 球向左出界 = AI 沒接到 = 玩家得分 (playerScore++)
